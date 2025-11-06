@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Gemini Personaliser</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="color-scheme" content="dark light"/>
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff"/>
+  <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#121212"/>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>"/>
+  <link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Gemini Personaliser&quot;,&quot;short_name&quot;:&quot;Gemini&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#121212&quot;,&quot;theme_color&quot;:&quot;#0b57d0&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='25%25' fill='%230b57d0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='300' fill='white'%3E💎%3C/text%3E%3C/svg%3E&quot;,&quot;sizes&quot;:&quot;512x512&quot;,&quot;type&quot;:&quot;image/svg+xml&quot;}]}"/>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f5f7fa;
+      --primary: #0b57d0;
+      --on-primary: #ffffff;
+      --text: #202124;
+      --text2: #5f6368;
+      --radius: 16px;
+      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --surface: #1e1e1e;
+        --primary: #8ab4f8;
+        --on-primary: #121212;
+        --text: #e8eaed;
+        --text2: #9aa0a6;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem 1rem;
+      border-bottom: 1px solid var(--surface);
+    }
+    header h1 { font-size: 1.1rem; margin: 0; }
+    #settingsBtn {
+      background: var(--surface);
+      border: none;
+      border-radius: var(--radius);
+      padding: .5rem .8rem;
+      cursor: pointer;
+      color: var(--text);
+    }
+    #chat {
+      overflow-y: auto;
+      padding: .8rem;
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+    }
+    .bubble {
+      max-width: 85%;
+      padding: .7rem .9rem;
+      border-radius: var(--radius);
+      line-height: 1.4;
+      animation: pop .25s ease;
+      white-space: pre-wrap;
+    }
+    @keyframes pop {
+      from { transform: scale(.94); opacity: 0; }
+    }
+    .user { align-self: flex-end; background: var(--primary); color: var(--on-primary); }
+    .bot  { align-self: flex-start; background: var(--surface); }
+    .bubble :first-child { margin-top: 0; }
+    .bubble :last-child  { margin-bottom: 0; }
+    code {
+      background: #0000001a;
+      border-radius: 6px;
+      padding: .15rem .3rem;
+      font-family: var(--mono);
+      font-size: .85em;
+    }
+    pre {
+      background: var(--bg);
+      padding: .6rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid var(--surface);
+    }
+    pre code { background: none; padding: 0; }
+    .copyBtn {
+      float: right;
+      background: var(--primary);
+      color: var(--on-primary);
+      border: none;
+      border-radius: 6px;
+      padding: .2rem .5rem;
+      font-size: .7rem;
+      cursor: pointer;
+    }
+    form {
+      display: flex;
+      gap: .5rem;
+      padding: .8rem;
+      border-top: 1px solid var(--surface);
+    }
+    input[name="msg"] {
+      flex: 1;
+      padding: .6rem .9rem;
+      border: 1px solid var(--surface);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 1rem;
+    }
+    button[type="submit"] {
+      background: var(--primary);
+      color: var(--on-primary);
+      border: none;
+      border-radius: var(--radius);
+      padding: 0 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    /* drawer */
+    #drawer {
+      position: fixed;
+      inset: 0;
+      background: #000000aa;
+      display: none;
+      place-items: end;
+    }
+    #drawer[open] { display: grid; }
+    .sheet {
+      background: var(--bg);
+      width: 100%;
+      max-width: 400px;
+      height: 90vh;
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 1rem;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 1rem;
+    }
+    .sheet h2 { margin: 0; font-size: 1.1rem; }
+    .sheet label { font-size: .8rem; color: var(--text2); }
+    .sheet input, .sheet select, .sheet textarea {
+      width: 100%;
+      padding: .55rem;
+      font-size: .9rem;
+      border: 1px solid var(--surface);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+    }
+    .sheet textarea { resize: vertical; min-height: 5rem; }
+    .sheet button[save] {
+      background: var(--primary);
+      color: var(--on-primary);
+      border: none;
+      border-radius: var(--radius);
+      padding: .7rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    @media (min-width: 700px) {
+      body { grid-template-columns: 340px 1fr; grid-template-rows: 1fr auto; }
+      header { grid-column: 2; }
+      #chat { grid-column: 2; }
+      form { grid-column: 2; }
+      #settingsBtn { display: none; }
+      #drawer { display: grid; position: static; background: none; place-items: stretch; grid-column: 1; grid-row: 1 / 4; }
+      .sheet { height: 100%; max-width: none; border-radius: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gemini Personaliser</h1>
+    <button id="settingsBtn" aria-label="Settings">⚙️</button>
+  </header>
+
+  <section id="chat" aria-live="polite"></section>
+
+  <form id="composer">
+    <input name="msg" autocomplete="off" required aria-label="Message"/>
+    <button type="submit" aria-label="Send">➤</button>
+  </form>
+
+  <aside id="drawer" open>
+    <div class="sheet">
+      <div>
+        <h2>Settings</h2>
+        <label>API Key (browser only)</label>
+        <input id="key" type="password" placeholder="AIza…">
+      </div>
+
+      <div style="overflow-y:auto;display:flex;flex-direction:column;gap:.8rem;">
+        <label>System Prompt</label>
+        <textarea id="system" placeholder="Persona…">You are a concise, friendly assistant.</textarea>
+
+        <label>Length</label>
+        <select id="length">
+          <option value="short">Short (1-2 sentences)</option>
+          <option value="medium" selected>Medium (1 paragraph)</option>
+          <option value="long">Long (2-3 paragraphs)</option>
+        </select>
+
+        <label>Tone</label>
+        <select id="tone">
+          <option value="neutral" selected>Neutral</option>
+          <option value="casual">Casual</option>
+          <option value="formal">Formal</option>
+          <option value="funny">Funny</option>
+        </select>
+
+        <label>Format</label>
+        <select id="format">
+          <option value="plain" selected>Plain text</option>
+          <option value="markdown">Markdown</option>
+          <option value="json">JSON</option>
+        </select>
+
+        <label>Temperature <span id="tempVal">0.7</span></label>
+        <input id="temp" type="range" min="0" max="1" step="0.1" value="0.7">
+
+        <label>Export chat</label>
+        <button type="button" id="export">Download JSON</button>
+      </div>
+
+      <button save id="save">Save & Close</button>
+    </div>
+  </aside>
+
+<script type="module">
+/* ---------- tiny encryption for localStorage ---------- */
+const enc=(d,k)=>btoa([...JSON.stringify(d)].map((c,i)=>String.fromCharCode(c.charCodeAt(0)^k.charCodeAt(i%k.length))).join(''));
+const dec=(s,k)=>JSON.parse([...atob(s)].map((c,i)=>String.fromCharCode(c.charCodeAt(0)^k.charCodeAt(i%k.length))).join(''));
+
+/* ---------- dom ---------- */
+const $=s=>document.querySelector(s);
+const $chat=$('#chat'), $form=$('#composer'), $key=$('#key'), $system=$('#system'), $length=$('#length'), $tone=$('#tone'), $format=$('#format'), $temp=$('#temp'), $tempVal=$('#tempVal'), $export=$('#export'), $save=$('#save'), $settingsBtn=$('#settingsBtn'), $drawer=$('#drawer');
+let history=[];
+
+/* ---------- prefs ---------- */
+const SALT='gemini-personaliser'; // change if you like
+function load(){
+  try{
+    const k=localStorage.getItem('k'), s=localStorage.getItem('s'), l=localStorage.getItem('l'), t=localStorage.getItem('t'), f=localStorage.getItem('f'), tp=localStorage.getItem('tp');
+    if(k) $key.value=dec(k,SALT);
+    if(s) $system.value=dec(s,SALT);
+    if(l) $length.value=dec(l,SALT);
+    if(t) $tone.value=dec(t,SALT);
+    if(f) $format.value=dec(f,SALT);
+    if(tp) $temp.value=dec(tp,SALT);
+  }catch{}
+}
+function save(){
+  localStorage.setItem('k',enc($key.value,SALT));
+  localStorage.setItem('s',enc($system.value,SALT));
+  localStorage.setItem('l',enc($length.value,SALT));
+  localStorage.setItem('t',enc($tone.value,SALT));
+  localStorage.setItem('f',enc($format.value,SALT));
+  localStorage.setItem('tp',enc($temp.value,SALT));
+}
+load();
+$temp.oninput=()=>$tempVal.textContent=$temp.value;
+$save.onclick=()=>{save(); $drawer.removeAttribute('open');};
+$settingsBtn.onclick=()=>$drawer.setAttribute('open','');
+
+/* ---------- markdown & highlight ---------- */
+function renderMarkdown(src){
+  return src
+    .replace(/```(\w+)?\n([\s\S]*?)```/g,(m,lang,code)=>{
+      const html=escapeHtml(code);
+      return `<pre><button class="copyBtn" onclick="navigator.clipboard.writeText(this.nextElementSibling.textContent);this.textContent='✔️'">copy</button><code>${html}</code></pre>`;
+    })
+    .replace(/`(
